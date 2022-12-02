@@ -63,16 +63,16 @@ else:
     st.session_state[cache_key] = net
 
 # タイトル表示
-col1, col2, col3 = st.columns(3)
+# col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 with col1:
     # ロゴマーク
     st.image("./images/forex_logo.png", width=70)
 with col2:
     # タイトル
-    # st.subheader("みまもりくん")
-    st.text("みまもりくん")
-with col3:
-    st.write("")
+    st.subheader("みまもりくん")
+# with col3:
+#     st.write("")
 
 # 状態表示
 labels_placeholder = st.empty()
