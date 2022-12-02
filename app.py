@@ -69,7 +69,8 @@ with col1:
     st.image("./images/forex_logo.png", width=70)
 with col2:
     # タイトル
-    st.subheader("みまもりくん")
+    # st.subheader("みまもりくん")
+    st.text("みまもりくん")
 with col3:
     st.write("")
 
