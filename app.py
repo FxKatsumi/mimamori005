@@ -62,14 +62,20 @@ else:
     net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
     st.session_state[cache_key] = net
 
+# # タイトル表示
+# col1, col2, col3 = st.columns(3)
+# with col1:
+#     # ロゴマーク
+#     st.image("./images/forex_logo.png", width=60)
+# with col2:
+#     # タイトル
+#     st.subheader("みまもりくん")
+
 # タイトル表示
-col1, col2, col3 = st.columns(3)
-with col1:
-    # ロゴマーク
-    st.image("./images/forex_logo.png", width=60)
-with col2:
-    # タイトル
-    st.subheader("みまもりくん")
+# ロゴマーク
+st.image("./images/forex_logo.png", width=60)
+# タイトル
+st.subheader("みまもりくん")
 
 # 状態表示
 labels_placeholder = st.empty()
