@@ -66,8 +66,7 @@ else:
 col1, col2, col3 = st.columns(3)
 with col1:
     # ロゴマーク
-    # st.image("./images/forex_logo.png", width=70)
-    st.image("./images/forex_logo.png", width=10)
+    st.image("./images/forex_logo.png", width=60)
 with col2:
     # タイトル
     st.subheader("みまもりくん")
