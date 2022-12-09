@@ -199,17 +199,23 @@ def drawingResult(src, objects):
         }
 
         font_path = font_path_dict.get(platform.system())
-        if font_path is None:
-            assert False, "想定してないOS"
-
-        # ラベルフォント
-        labelfont = ImageFont.truetype(font_path, label_font_size)
+        # if font_path is None:
+        #     assert False, "想定してないOS"
 
         # テキスト描画
         y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
-        draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
+        # draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
         # draw.text(xy = (startX, y), text = jname, fill = col)
         # draw.text(xy = (startX, y), text = jname, fill = col, font = font)
+
+        if font_path is None:
+            draw.text(xy = (startX, y), text = jname, fill = col)
+        else:
+            # ラベルフォント
+            labelfont = ImageFont.truetype(font_path, label_font_size)
+            draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
+
+
 
     # ロゴマークを合成
     src_height, src_width = src.shape[:2]
