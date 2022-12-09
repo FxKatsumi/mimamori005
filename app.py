@@ -80,7 +80,7 @@ color_blue = (0, 0, 255) # 青
 # フォント
 # font_name = "C:\\Windows\\Fonts\\msgothic.ttc" # MSゴシック
 # font_name = "C:\\Windows\\Fonts\\msmincho.ttc" # MS明朝
-font_name = "C:\\Windows\\Fonts\\meiryo.ttc" # MEIRYO
+# font_name = "C:\\Windows\\Fonts\\meiryo.ttc" # MEIRYO
 # font_name = "C:\\Windows\\Fonts\\meiryob.ttc" # MEIRYO（太字）
 
 # ラベル
@@ -111,8 +111,8 @@ else:
     net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
     st.session_state[cache_key] = net
 
-# ラベルフォント
-labelfont = ImageFont.truetype(font_name, label_font_size)
+# # ラベルフォント
+# labelfont = ImageFont.truetype(font_name, label_font_size)
 
 # ロゴマーク読み込み
 logo_image = cv2.imread(logo_path, cv2.IMREAD_UNCHANGED)
@@ -181,10 +181,13 @@ def drawingResult(src, objects):
         # 枠描画
         draw.rectangle([(startX, startY), (endX, endY)], outline=col, width=2)
 
+        font = ImageFont.truetype('ヒラギノ丸ゴ ProN W4.ttc', 24)
+
         # テキスト描画
         y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
         # draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
-        draw.text(xy = (startX, y), text = jname, fill = col)
+        # draw.text(xy = (startX, y), text = jname, fill = col)
+        draw.text(xy = (startX, y), text = jname, fill = col, font = font)
 
     # ロゴマークを合成
     src_height, src_width = src.shape[:2]
