@@ -97,8 +97,8 @@ font_name_mac = "ヒラギノ丸ゴ ProN W4.ttc" # Mac
 # font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 # font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
 # font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-# font_name_lnx = "DejaVuSerif.ttf"
+# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+font_name_lnx = "DejaVuSerif.ttf"
 # font_name_lnx = "DejaVuSerif-Bold.ttf"
 # font_name_lnx = "DejaVuSansMono.ttf"
 # font_name_lnx = "DejaVuSansMono-Bold.ttf"
@@ -153,7 +153,7 @@ logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
 logo_pil = Image.fromarray(logo_image)
 
 # タイトル表示
-st.subheader("みまもりくんd")
+st.subheader("みまもりくん")
 
 # 状態表示
 labels_placeholder = st.empty()
@@ -209,9 +209,10 @@ def drawingResult(src, objects):
     # 物体取得
     for (startX, startY, endX, endY, ename, jname, col, confidence) in objects:
         # ラベル
-        label = jname # 日本語
-        # if sys.platform in ("linux", "linux2"): # Linux？（日本語フォントなし）
-        #     label = ename # 英語
+        if sys.platform in ("linux", "linux2"): # Linux？（日本語フォントなし）
+            label = ename # 英語
+        else:
+            label = jname # 日本語
 
         # ラベル描画
         y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
