@@ -7,8 +7,12 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
+
 # ダウンロードモジュール
 from sample_utils.download import download_file
+
+# ロガー
+# logger = logging.getLogger(__name__)
 
 # クラス名（英語）
 CLASSES_E = [
@@ -72,33 +76,6 @@ PROTOTXT_LOCAL_PATH = ROOT / "./models/MobileNetSSD_deploy.prototxt.txt"
 # 検出精度初期値
 DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
-# 色
-color_white = (255, 255, 255) # 白
-color_red = (255, 0, 0) # 赤
-color_blue = (0, 0, 255) # 青
-
-# フォント
-# font_name = "C:\\Windows\\Fonts\\msgothic.ttc" # MSゴシック
-# font_name = "C:\\Windows\\Fonts\\msmincho.ttc" # MS明朝
-font_name = "C:\\Windows\\Fonts\\meiryo.ttc" # MEIRYO
-# font_name = "C:\\Windows\\Fonts\\meiryob.ttc" # MEIRYO（太字）
-
-# ラベル
-label_font_size = 14 # ラベルフォントサイズ
-
-# ロゴマーク
-logo_path = "./images/forex_logo_a.png" # ロゴパス名
-logo_rate = 0.15 # 倍率
-logo_margin = 5 # ロゴ表示マージン
-
-# キュー
-result_queue: queue.Queue = (
-    queue.Queue()
-)  # TODO: A general-purpose shared state object may be more useful.
-
-# ロガー
-# logger = logging.getLogger(__name__)
-
 # ファイルダウンロード
 download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=23147564) # 学習モデル
 download_file(PROTOTXT_URL, PROTOTXT_LOCAL_PATH, expected_size=29353) # プロトコル
@@ -111,13 +88,17 @@ else:
     net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
     st.session_state[cache_key] = net
 
-# ラベルフォント
-labelfont = ImageFont.truetype(font_name, label_font_size)
+# ロゴマーク
+logo_path = "./images/forex_logo_a.png" # ロゴパス名
+# logo_rate = 0.12 # 倍率
+logo_rate = 0.15 # 倍率
 
 # ロゴマーク読み込み
 logo_image = cv2.imread(logo_path, cv2.IMREAD_UNCHANGED)
 logo_image = cv2.resize(logo_image, dsize=None, fx=logo_rate, fy=logo_rate)
 logo_height, logo_width = logo_image.shape[:2]
+logo_margin = 5 # ロゴ表示マージン
+
 # PIL形式に変換
 logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
 logo_pil = Image.fromarray(logo_image)
@@ -131,16 +112,14 @@ labels_placeholder = st.empty()
 streaming_placeholder = st.empty()
 # スライダー表示
 confidence_threshold = st.slider(
-    "精度", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
+    "精度調節", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
 )
 
-# 物体抽出
-def extractionObject(cimage, detections):
+# 検出結果描画
+def _annotate_image(cimage, detections):
     num = 0 # 人数
-    (h, w) = cimage.shape[:2]
-    objects = [] # 物体配列
-
     # loop over the detections
+    (h, w) = cimage.shape[:2]
     for i in np.arange(0, detections.shape[2]):
         confidence = detections[0, 0, i, 2] # 精度
 
@@ -148,75 +127,103 @@ def extractionObject(cimage, detections):
             # extract the index of the class label from the `detections`,
             # then compute the (x, y)-coordinates of the bounding box for
             # the object
+            idx = int(detections[0, 0, i, 1])
             box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
 
-            idx = int(detections[0, 0, i, 1])
-            ename = CLASSES_E[idx]
-            jname = CLASSES_J[idx]
+            name = CLASSES_E[idx]
 
-            if ename == "person": # 人間？
+            if name == "person": # 人間？
                 num += 1
-                col = color_red
+                col = (0, 0, 255) # 赤
             else:
-                col = color_blue
+                col = (255, 0, 0) # 青
 
-            # 物体追加
-            objects.append((startX, startY, endX, endY, ename, jname, col, confidence))
+            # display the prediction
+            label = f"{name}: {round(confidence * 100, 2)}%"
+            # 枠描画
+            cv2.rectangle(cimage, (startX, startY), (endX, endY), col, 2)
+            # テキスト描画
+            y = startY - 15 if startY - 15 > 15 else startY + 15
+            cv2.putText(
+                cimage,
+                label,
+                (startX, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                col,
+                2,
+            )
+    return cimage, num
 
-    return objects, num
+# キュー
+result_queue: queue.Queue = (
+    queue.Queue()
+)  # TODO: A general-purpose shared state object may be more useful.
 
-# 結果描画
-def drawingResult(src, objects):
+# 画像のオーバーレイ
+def overlayImage(src, pil_logo, location):
     # （参考）
     # https://note.com/npaka/n/nddb33be1b782
 
     # 背景をPIL形式に変換
     src = cv2.cvtColor(src, cv2.COLOR_BGR2RGB)
     pil_src = Image.fromarray(src)
+
+
+    # 色
+    color_white = (255, 255, 255) # 白
+    color_red = (0,0,255) # 赤
+
+    # フォント
+    font_name = "C:\\Windows\\Fonts\\msgothic.ttc" # MSゴシック
+    # font_name = "C:\\Windows\\Fonts\\msmincho.ttc" # MS明朝
+    # font_name = "C:\\Windows\\Fonts\\meiryo.ttc" # MEIRYO
+    # font_name = "C:\\Windows\\Fonts\\meiryob.ttc" # MEIRYO（太字）
+
+    # ラベル
+    label_font_size = 14 # ラベルフォントサイズ
+    label_bg_color = color_red # ラベル背景色
+    label_text_color = color_white # ラベル文字色
+
     draw = ImageDraw.Draw(pil_src)
+    label_text_color = color_white # ラベル文字色
 
-    # 物体取得
-    for (startX, startY, endX, endY, ename, jname, col, confidence) in objects:
-        # 枠描画
-        draw.rectangle([(startX, startY), (endX, endY)], outline=col, width=2)
+    # ラベルフォント
+    labelfont = ImageFont.truetype(font_name, label_font_size)
 
-        # テキスト描画
-        y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
-        draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
+    # テキスト描画
+    draw.text(xy = (100,100), text = "フォレックス", fill = label_bg_color, font = labelfont)
 
-    # ロゴマークを合成
-    src_height, src_width = src.shape[:2]
-    logo_pos = (src_width - logo_width - logo_margin, logo_margin)
-    pil_src.paste(logo_pil, logo_pos, logo_pil)
+
+    # 画像を合成
+    pil_src.paste(pil_logo, location, pil_logo)
 
     # OpenCV形式に変換
     return cv2.cvtColor(np.asarray(pil_src), cv2.COLOR_RGB2BGR)
 
 # コールバック処理
 def callback(frame: av.VideoFrame) -> av.VideoFrame:
-    # 画像変換
     cimage = frame.to_ndarray(format="bgr24")
     blob = cv2.dnn.blobFromImage(
         cv2.resize(cimage, (300, 300)), 0.007843, (300, 300), 127.5
     )
-
-    # 物体検出
     net.setInput(blob)
-    detections = net.forward()
-
-    # 物体抽出
-    objects, num = extractionObject(cimage, detections)
+    detections = net.forward() # 物体検出
+    # 検出結果描画
+    annotated_image, num = _annotate_image(cimage, detections)
 
     # NOTE: This `recv` method is called in another thread,
     # so it must be thread-safe.
     # result_queue.put(result)  # TODO:
     result_queue.put(num)  # TODO:
 
-    # 結果描画
-    cimage = drawingResult(cimage, objects)
+    # 画像のオーバーレイ（ロゴマーク表示）
+    src_height, src_width = annotated_image.shape[:2]
+    logo_pos = (src_width - logo_width - logo_margin, logo_margin)
+    annotated_image = overlayImage(annotated_image, logo_pil, logo_pos)
 
-    return av.VideoFrame.from_ndarray(cimage, format="bgr24")
+    return av.VideoFrame.from_ndarray(annotated_image, format="bgr24")
 
 # 映像表示
 with streaming_placeholder.container():

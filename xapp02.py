@@ -4,14 +4,20 @@ import numpy as np
 # import logging
 import queue
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+
+from PIL import Image
+
 import streamlit as st
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
+
 # ダウンロードモジュール
 from sample_utils.download import download_file
 
-# クラス名（英語）
-CLASSES_E = [
+# ロガー
+# logger = logging.getLogger(__name__)
+
+# クラス名
+CLASSES = [
     "background",
     "aeroplane",
     "bicycle",
@@ -35,31 +41,6 @@ CLASSES_E = [
     "tvmonitor",
 ]
 
-# クラス名（日本語）
-CLASSES_J = [
-    "背景",
-    "飛行機",
-    "自転車",
-    "鳥",
-    "船",
-    "ボトル",
-    "バス",
-    "車",
-    "猫",
-    "椅子",
-    "牛",
-    "テーブル",
-    "犬",
-    "馬",
-    "バイク",
-    "人間",
-    "植木",
-    "羊",
-    "ソファー",
-    "列車",
-    "モニター",
-]
-
 # パス名
 HERE = Path(__file__).parent
 ROOT = HERE.parent
@@ -72,35 +53,18 @@ PROTOTXT_LOCAL_PATH = ROOT / "./models/MobileNetSSD_deploy.prototxt.txt"
 # 検出精度初期値
 DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
-# 色
-color_white = (255, 255, 255) # 白
-color_red = (255, 0, 0) # 赤
-color_blue = (0, 0, 255) # 青
-
-# フォント
-# font_name = "C:\\Windows\\Fonts\\msgothic.ttc" # MSゴシック
-# font_name = "C:\\Windows\\Fonts\\msmincho.ttc" # MS明朝
-font_name = "C:\\Windows\\Fonts\\meiryo.ttc" # MEIRYO
-# font_name = "C:\\Windows\\Fonts\\meiryob.ttc" # MEIRYO（太字）
-
-# ラベル
-label_font_size = 14 # ラベルフォントサイズ
-
 # ロゴマーク
-logo_path = "./images/forex_logo_a.png" # ロゴパス名
-logo_rate = 0.15 # 倍率
-logo_margin = 5 # ロゴ表示マージン
-
-# キュー
-result_queue: queue.Queue = (
-    queue.Queue()
-)  # TODO: A general-purpose shared state object may be more useful.
-
-# ロガー
-# logger = logging.getLogger(__name__)
+logo_path = "./images/forex_logo.png" # ロゴパス名
+# logo_rate = 0.11 # 倍率
+logo_rate = 0.16 # 倍率
+logo_image = cv2.imread(logo_path)
+# logo_image = cv2.imread(logo_path, -1)
+# アルファチャンネルの取得
+# logo_image = logo_image[:,:,3]
+logo_image = cv2.resize(logo_image, dsize=None, fx=logo_rate, fy=logo_rate)
 
 # ファイルダウンロード
-download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=23147564) # 学習モデル
+download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=23147564) # モデル
 download_file(PROTOTXT_URL, PROTOTXT_LOCAL_PATH, expected_size=29353) # プロトコル
 
 # Session-specific caching
@@ -111,18 +75,19 @@ else:
     net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
     st.session_state[cache_key] = net
 
-# ラベルフォント
-labelfont = ImageFont.truetype(font_name, label_font_size)
-
-# ロゴマーク読み込み
-logo_image = cv2.imread(logo_path, cv2.IMREAD_UNCHANGED)
-logo_image = cv2.resize(logo_image, dsize=None, fx=logo_rate, fy=logo_rate)
-logo_height, logo_width = logo_image.shape[:2]
-# PIL形式に変換
-logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
-logo_pil = Image.fromarray(logo_image)
+# # タイトル表示
+# col1, col2, col3 = st.columns(3)
+# with col1:
+#     # ロゴマーク
+#     st.image("./images/forex_logo.png", width=60)
+# with col2:
+#     # タイトル
+#     st.subheader("みまもりくん")
 
 # タイトル表示
+# ロゴマーク
+st.image("./images/forex_logo.png", width=60)
+# タイトル
 st.subheader("みまもりくん")
 
 # 状態表示
@@ -131,16 +96,14 @@ labels_placeholder = st.empty()
 streaming_placeholder = st.empty()
 # スライダー表示
 confidence_threshold = st.slider(
-    "精度", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
+    "精度調節", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
 )
 
-# 物体抽出
-def extractionObject(cimage, detections):
+# 検出結果描画
+def _annotate_image(aimage, detections):
     num = 0 # 人数
-    (h, w) = cimage.shape[:2]
-    objects = [] # 物体配列
-
     # loop over the detections
+    (h, w) = aimage.shape[:2]
     for i in np.arange(0, detections.shape[2]):
         confidence = detections[0, 0, i, 2] # 精度
 
@@ -148,76 +111,76 @@ def extractionObject(cimage, detections):
             # extract the index of the class label from the `detections`,
             # then compute the (x, y)-coordinates of the bounding box for
             # the object
+            idx = int(detections[0, 0, i, 1])
             box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
 
-            idx = int(detections[0, 0, i, 1])
-            ename = CLASSES_E[idx]
-            jname = CLASSES_J[idx]
+            name = CLASSES[idx]
 
-            if ename == "person": # 人間？
+            if name == "person": # 人間？
                 num += 1
-                col = color_red
+                col = (0, 0, 255) # 赤
             else:
-                col = color_blue
+                col = (255, 0, 0) # 青
 
-            # 物体追加
-            objects.append((startX, startY, endX, endY, ename, jname, col, confidence))
+            # display the prediction
+            label = f"{name}: {round(confidence * 100, 2)}%"
+            # 枠描画
+            cv2.rectangle(aimage, (startX, startY), (endX, endY), col, 2)
+            # テキスト描画
+            y = startY - 15 if startY - 15 > 15 else startY + 15
+            cv2.putText(
+                aimage,
+                label,
+                (startX, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                col,
+                2,
+            )
 
-    return objects, num
+    return aimage, num
 
-# 結果描画
-def drawingResult(src, objects):
-    # （参考）
-    # https://note.com/npaka/n/nddb33be1b782
-
-    # 背景をPIL形式に変換
-    src = cv2.cvtColor(src, cv2.COLOR_BGR2RGB)
-    pil_src = Image.fromarray(src)
-    draw = ImageDraw.Draw(pil_src)
-
-    # 物体取得
-    for (startX, startY, endX, endY, ename, jname, col, confidence) in objects:
-        # 枠描画
-        draw.rectangle([(startX, startY), (endX, endY)], outline=col, width=2)
-
-        # テキスト描画
-        y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
-        draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
-
-    # ロゴマークを合成
-    src_height, src_width = src.shape[:2]
-    logo_pos = (src_width - logo_width - logo_margin, logo_margin)
-    pil_src.paste(logo_pil, logo_pos, logo_pil)
-
-    # OpenCV形式に変換
-    return cv2.cvtColor(np.asarray(pil_src), cv2.COLOR_RGB2BGR)
+# キュー
+result_queue: queue.Queue = (
+    queue.Queue()
+)  # TODO: A general-purpose shared state object may be more useful.
 
 # コールバック処理
 def callback(frame: av.VideoFrame) -> av.VideoFrame:
-    # 画像変換
-    cimage = frame.to_ndarray(format="bgr24")
+    aimage = frame.to_ndarray(format="bgr24")
     blob = cv2.dnn.blobFromImage(
-        cv2.resize(cimage, (300, 300)), 0.007843, (300, 300), 127.5
+        cv2.resize(aimage, (300, 300)), 0.007843, (300, 300), 127.5
     )
-
-    # 物体検出
     net.setInput(blob)
-    detections = net.forward()
-
-    # 物体抽出
-    objects, num = extractionObject(cimage, detections)
+    detections = net.forward() # 物体検出
+    # 検出結果描画
+    annotated_image, num = _annotate_image(aimage, detections)
 
     # NOTE: This `recv` method is called in another thread,
     # so it must be thread-safe.
     # result_queue.put(result)  # TODO:
     result_queue.put(num)  # TODO:
 
-    # 結果描画
-    cimage = drawingResult(cimage, objects)
 
-    return av.VideoFrame.from_ndarray(cimage, format="bgr24")
+    # # ロゴ描画
+    # aimage.paste(logo_image, (100, 100), logo_image)
+    # annotated_image[0:0, 0:0] = logo_image
+    # # annotated_image = cv2.addWeighted(annotated_image, 0.5, logo_image, 0.5, 0)
+    # annotated_image=cv2.addWeighted(annotated_image[0:100,0:100],0.7,logo_image,0.3,0)
+    # watermark_h, watermark_w = logo_image.shape[:2]
+    # annotated_image[10:watermark_h + 10, 10:watermark_h + 10] = logo_image
+    # annotated_image=cv2.addWeighted(annotated_image,0.7,logo_image,0.3,0)
+    # dst = cv2.add(annotated_image,logo_image)
 
+    dx = 7    # 横方向の移動距離
+    dy = 7    # 縦方向の移動距離
+    h, w = logo_image.shape[:2]
+    ah, aw = annotated_image.shape[:2]
+    annotated_image[dy:dy+h, aw-w-dx:aw-dx] = logo_image
+
+    return av.VideoFrame.from_ndarray(annotated_image, format="bgr24")
+ 
 # 映像表示
 with streaming_placeholder.container():
     # WEBカメラ
