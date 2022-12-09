@@ -97,12 +97,13 @@ font_name_mac = "ヒラギノ丸ゴ ProN W4.ttc" # Mac
 # font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 # font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
 # font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 # font_name_lnx = "DejaVuSerif.ttf"
 # font_name_lnx = "DejaVuSerif-Bold.ttf"
 # font_name_lnx = "DejaVuSansMono.ttf"
-font_name_lnx = "DejaVuSansMono-Bold.ttf"
+# font_name_lnx = "DejaVuSansMono-Bold.ttf"
 # font_name_lnx = "DejaVuSans.ttf"
+# font_name_lnx = "DejaVuSans-Bold.ttf"
 
 # ラベル
 label_font_size = 16 # ラベルフォントサイズ
@@ -152,7 +153,7 @@ logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
 logo_pil = Image.fromarray(logo_image)
 
 # タイトル表示
-st.subheader("みまもりくんc")
+st.subheader("みまもりくんd")
 
 # 状態表示
 labels_placeholder = st.empty()
