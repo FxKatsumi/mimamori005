@@ -181,7 +181,9 @@ def drawingResult(src, objects):
         # 枠描画
         draw.rectangle([(startX, startY), (endX, endY)], outline=col, width=2)
 
-        font = ImageFont.truetype('ヒラギノ丸ゴ ProN W4.ttc', 24)
+        # font = ImageFont.truetype('ヒラギノ丸ゴ ProN W4.ttc', 24)
+        # font = ImageFont.truetype('C:\Windows\Fonts\meiryo.ttc', 24)
+        font = ImageFont.truetype('meiryo.ttc', 24)
 
         # テキスト描画
         y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
