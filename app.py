@@ -83,26 +83,26 @@ color_blue = (0, 0, 255) # 青
 
 # フォント
 # Windows
-# font_name = "C:\\Windows\\Fonts\\msgothic.ttc" # MSゴシック
-# font_name = "C:\\Windows\\Fonts\\msmincho.ttc" # MS明朝
-# font_name = "C:\\Windows\\Fonts\\meiryo.ttc" # MEIRYO
-# font_name = "C:\\Windows\\Fonts\\meiryob.ttc" # MEIRYO（太字）
-# font_name = "msgothic.ttc" # MSゴシック
-# font_name = "meiryo.ttc" # MEIRYO
+# font_name_win = "C:\\Windows\\Fonts\\msgothic.ttc" # MSゴシック
+# font_name_win = "C:\\Windows\\Fonts\\msmincho.ttc" # MS明朝
+# font_name_win = "C:\\Windows\\Fonts\\meiryo.ttc" # MEIRYO
+# font_name_win = "C:\\Windows\\Fonts\\meiryob.ttc" # MEIRYO（太字）
+font_name_win = "msgothic.ttc" # MSゴシック
+# font_name_win = "meiryo.ttc" # MEIRYO
 
-# font = ImageFont.truetype('ヒラギノ丸ゴ ProN W4.ttc', 24) # Mac
-# font = ImageFont.truetype("/usr/share/fonts/OTF/TakaoPMincho.ttf", 24) # Linux
+font_name_mac = "ヒラギノ丸ゴ ProN W4.ttc" # Mac
+# font_name_lnx = "/usr/share/fonts/OTF/TakaoPMincho.ttf" # Linux
 
-# streamlit
-# font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
-# font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
-# font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-# font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
-# font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-# font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-font_name = "DejaVuSerif.ttf"
-# font_name = "DejaVuSansMono.ttf"
-# font_name = "DejaVuSans.ttf"
+# streamlit Cloud
+# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
+# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
+# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
+# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+# font_name_lnx = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+font_name_lnx = "DejaVuSerif.ttf"
+# font_name_lnx = "DejaVuSansMono.ttf"
+# font_name_lnx = "DejaVuSans.ttf"
 
 # ラベル
 label_font_size = 16 # ラベルフォントサイズ
@@ -132,6 +132,14 @@ else:
     net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
     st.session_state[cache_key] = net
 
+# フォント
+if sys.platform == "win32": # Windows
+    font_name = font_name_win
+if sys.platform in ("linux", "linux2"): # Linux
+    font_name = font_name_lnx
+if sys.platform == "darwin": # Mac
+    font_name = font_name_mac
+
 # ラベルフォント
 labelfont = ImageFont.truetype(font_name, label_font_size)
 
@@ -144,7 +152,7 @@ logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
 logo_pil = Image.fromarray(logo_image)
 
 # タイトル表示
-st.subheader("みまもりくん6")
+st.subheader("みまもりくん7")
 
 # 状態表示
 labels_placeholder = st.empty()
@@ -221,9 +229,14 @@ def drawingResult(src, objects):
         # # if font_path is None:
         # #     assert False, "想定してないOS"
 
+        #ラベル
+        name = jname
+        if sys.platform in ("linux", "linux2"): # Linux？（日本語フォントなし）
+            name = ename
+
         # テキスト描画
         y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
-        draw.text(xy = (startX, y), text = ename, fill = col, font = labelfont)
+        draw.text(xy = (startX, y), text = name, fill = col, font = labelfont)
         # # draw.text(xy = (startX, y), text = jname, fill = col)
         # # draw.text(xy = (startX, y), text = jname, fill = col, font = font)
 
