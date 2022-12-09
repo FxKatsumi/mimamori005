@@ -7,4 +7,3 @@ streamlit==1.14.0
 streamlit_webrtc==0.44.0
 typing_extensions==4.1.1
 protobuf~=3.19.0
-japanize-matplotlib==1.1.3
