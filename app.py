@@ -97,8 +97,10 @@ color_blue = (0, 0, 255) # 青
 # font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
 # font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 # font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+font_name = "DejaVuSansMono.ttf"
 # font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
-font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+# font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+# font_name = "DejaVuSans.ttf"
 # font_name = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # ラベル
@@ -141,7 +143,7 @@ logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
 logo_pil = Image.fromarray(logo_image)
 
 # タイトル表示
-st.subheader("みまもりくん4")
+st.subheader("みまもりくん5")
 
 # 状態表示
 labels_placeholder = st.empty()
