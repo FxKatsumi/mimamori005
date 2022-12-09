@@ -10,6 +10,8 @@ from streamlit_webrtc import WebRtcMode, webrtc_streamer
 # ダウンロードモジュール
 from sample_utils.download import download_file
 
+import platform
+
 # クラス名（英語）
 CLASSES_E = [
     "background",
@@ -184,13 +186,30 @@ def drawingResult(src, objects):
         # font = ImageFont.truetype('ヒラギノ丸ゴ ProN W4.ttc', 24)
         # font = ImageFont.truetype('C:\Windows\Fonts\meiryo.ttc', 24)
         # font = ImageFont.truetype("/usr/share/fonts/OTF/TakaoPMincho.ttf", 24)
-        font = ImageFont.truetype("TakaoPMincho.ttf", 24)
+        # font = ImageFont.truetype("TakaoPMincho.ttf", 24)
+
+        # OSごとにパスが異なる
+        font_path_dict = {
+            # この例だとメイリオを使用. ほかのフォントにも当然変更できる
+            # "Windows": "C:/Windows/Fonts/meiryo.ttc",
+            "Windows": "meiryo.ttc",
+            # Windows以外拾い物で動作確認できてないので間違ってるかもしれません
+            "Darwin": "/System/Library/Fonts/Courier.dfont",  # Mac
+            "Linux": "/usr/share/fonts/OTF/TakaoPMincho.ttf"
+        }
+
+        font_path = font_path_dict.get(platform.system())
+        if font_path is None:
+            assert False, "想定してないOS"
+
+        # ラベルフォント
+        labelfont = ImageFont.truetype(font_path, label_font_size)
 
         # テキスト描画
         y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
-        # draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
+        draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
         # draw.text(xy = (startX, y), text = jname, fill = col)
-        draw.text(xy = (startX, y), text = jname, fill = col, font = font)
+        # draw.text(xy = (startX, y), text = jname, fill = col, font = font)
 
     # ロゴマークを合成
     src_height, src_width = src.shape[:2]
