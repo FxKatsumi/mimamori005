@@ -141,7 +141,7 @@ logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
 logo_pil = Image.fromarray(logo_image)
 
 # タイトル表示
-st.subheader("みまもりくん3")
+st.subheader("みまもりくん4")
 
 # 状態表示
 labels_placeholder = st.empty()
