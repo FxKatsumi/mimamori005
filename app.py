@@ -7,12 +7,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
+import sys
+
 # ダウンロードモジュール
 from sample_utils.download import download_file
-
-import platform
-import sys
-import os
 
 # クラス名（英語）
 CLASSES_E = [
@@ -152,7 +150,7 @@ logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
 logo_pil = Image.fromarray(logo_image)
 
 # タイトル表示
-st.subheader("みまもりくん7")
+st.subheader("みまもりくん")
 
 # 状態表示
 labels_placeholder = st.empty()
@@ -193,7 +191,7 @@ def extractionObject(cimage, detections):
             # 物体追加
             objects.append((startX, startY, endX, endY, ename, jname, col, confidence))
 
-    return objects, num, cimage
+    return objects, num
 
 # 結果描画
 def drawingResult(src, objects):
@@ -207,45 +205,17 @@ def drawingResult(src, objects):
 
     # 物体取得
     for (startX, startY, endX, endY, ename, jname, col, confidence) in objects:
+        # ラベル
+        label = jname # 日本語
+        if sys.platform in ("linux", "linux2"): # Linux？（日本語フォントなし）
+            label = ename # 英語
+
+        # ラベル描画
+        y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
+        draw.text(xy = (startX, y), text = label, fill = col, font = labelfont)
+
         # 枠描画
         draw.rectangle([(startX, startY), (endX, endY)], outline=col, width=2)
-
-        # font = ImageFont.truetype('ヒラギノ丸ゴ ProN W4.ttc', 24)
-        # font = ImageFont.truetype('C:\Windows\Fonts\meiryo.ttc', 24)
-        # font = ImageFont.truetype("/usr/share/fonts/OTF/TakaoPMincho.ttf", 24)
-        # font = ImageFont.truetype("TakaoPMincho.ttf", 24)
-
-        # # OSごとにパスが異なる
-        # font_path_dict = {
-        #     # この例だとメイリオを使用. ほかのフォントにも当然変更できる
-        #     # "Windows": "C:/Windows/Fonts/meiryo.ttc",
-        #     "Windows": "meiryo.ttc",
-        #     # Windows以外拾い物で動作確認できてないので間違ってるかもしれません
-        #     "Darwin": "/System/Library/Fonts/Courier.dfont",  # Mac
-        #     "Linux": "/usr/share/fonts/OTF/TakaoPMincho.ttf"
-        # }
-
-        # font_path = font_path_dict.get(platform.system())
-        # # if font_path is None:
-        # #     assert False, "想定してないOS"
-
-        #ラベル
-        name = jname
-        if sys.platform in ("linux", "linux2"): # Linux？（日本語フォントなし）
-            name = ename
-
-        # テキスト描画
-        y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
-        draw.text(xy = (startX, y), text = name, fill = col, font = labelfont)
-        # # draw.text(xy = (startX, y), text = jname, fill = col)
-        # # draw.text(xy = (startX, y), text = jname, fill = col, font = font)
-
-        # if font_path is None:
-        #     draw.text(xy = (startX, y), text = jname, fill = col)
-        # else:
-        #     # ラベルフォント
-        #     labelfont = ImageFont.truetype(font_path, label_font_size)
-        #     draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
 
     # ロゴマークを合成
     src_height, src_width = src.shape[:2]
@@ -259,24 +229,22 @@ def drawingResult(src, objects):
 def callback(frame: av.VideoFrame) -> av.VideoFrame:
     # 画像変換
     cimage = frame.to_ndarray(format="bgr24")
-    blob = cv2.dnn.blobFromImage(
-        cv2.resize(cimage, (300, 300)), 0.007843, (300, 300), 127.5
-    )
+    blob = cv2.dnn.blobFromImage(cv2.resize(cimage, (300, 300)), 0.007843, (300, 300), 127.5)
 
     # 物体検出
     net.setInput(blob)
     detections = net.forward()
 
     # 物体抽出
-    objects, num, cimage = extractionObject(cimage, detections)
+    objects, num = extractionObject(cimage, detections)
+
+    # 結果描画
+    cimage = drawingResult(cimage, objects)
 
     # NOTE: This `recv` method is called in another thread,
     # so it must be thread-safe.
     # result_queue.put(result)  # TODO:
     result_queue.put(num)  # TODO:
-
-    # 結果描画
-    cimage = drawingResult(cimage, objects)
 
     return av.VideoFrame.from_ndarray(cimage, format="bgr24")
 
