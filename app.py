@@ -183,7 +183,8 @@ def drawingResult(src, objects):
 
         # テキスト描画
         y = startY - (label_font_size+1) if startY - (label_font_size+1) > (label_font_size+1) else startY + (label_font_size+1)
-        draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
+        # draw.text(xy = (startX, y), text = jname, fill = col, font = labelfont)
+        draw.text(xy = (startX, y), text = jname, fill = col)
 
     # ロゴマークを合成
     src_height, src_width = src.shape[:2]
