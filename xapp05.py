@@ -9,10 +9,6 @@ import streamlit as st
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
 import sys
 
-#メール
-from email.mime.text import MIMEText
-import smtplib
-
 # ダウンロードモジュール
 from sample_utils.download import download_file
 
@@ -117,11 +113,8 @@ logo_path = "./images/forex_logo_a.png" # ロゴパス名
 logo_rate = 0.15 # 倍率
 logo_margin = 5 # ロゴ表示マージン
 
-# メール設定
-mail_host = st.secrets.mail_settings.mail_host
-mail_port = st.secrets.mail_settings.mail_port
-mail_from = st.secrets.mail_settings.mail_from
-mail_pass = st.secrets.mail_settings.mail_pass
+# 合計人数
+total_num = 0
 
 # キュー
 result_queue: queue.Queue = (
@@ -145,7 +138,10 @@ else:
 
 # 合計人数
 total_key = "total_number"
-total_max = 10000
+if total_key in st.session_state:
+    total_num = st.session_state[total_key]
+else:
+    st.session_state[total_key] = total_num
 
 # フォント
 if sys.platform == "win32": # Windows
@@ -177,57 +173,6 @@ streaming_placeholder = st.empty()
 confidence_threshold = st.slider(
     "精度", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
 )
-
-# メールアドレス
-mailto_placeholder = st.text_input("宛先メールアドレス", "")
-# メール送信
-send_flag_placeholder = st.checkbox("人が見つかったときにメールを送信する")
-
-# 合計人数取得
-def getTotal():
-    result = 0
-
-    if total_key in st.session_state: # セッションあり？
-        # セッション取得
-        result = st.session_state[total_key]
-
-    return result
-
-# 合計人数設定
-def setTotal(num):
-    if num != 0: # インクリメント？
-        # インクリメント
-        result = ((getTotal() + 1) % total_max) + 1
-
-    else: # リセット
-        result = 0
-
-    # セッション保持
-    st.session_state[total_key] = result
-
-# メール送信
-def send_mail(mail_to, subject, msg):
-    msg = MIMEText(msg, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = mail_from
-    msg["To"] = mail_to
-
-    # メールサーバー
-    server = smtplib.SMTP(mail_host, mail_port)
-
-    #TLS認証
-    server.ehlo()
-    server.starttls()
-    server.ehlo()
-
-    #ログイン
-    server.login(mail_from, mail_pass)
-
-    # メールを送信する
-    server.send_message(msg)
-    
-    # 閉じる
-    server.quit()
 
 # 物体抽出
 def extractionObject(cimage, detections):
@@ -340,8 +285,7 @@ with streaming_placeholder.container():
 
 if webrtc_ctx.state.playing: # 映像配信中？
     labels = labels_placeholder
-
-    while webrtc_ctx.state.playing: # 配信中
+    while True: # 繰り返し
         try:
             # キューの取得
             result = result_queue.get(timeout=1.0) # 人数取得
@@ -349,32 +293,16 @@ if webrtc_ctx.state.playing: # 映像配信中？
             result = 0
 
         if result > 0: # 人がいる？
-            labels.error("人を発見！")
+            labels.error('人を発見！' + str(total_num))
 
-            if getTotal() == 0: # 初回？
-                if send_flag_placeholder: # メール送信あり？
-                    if mailto_placeholder != "": # 送信メールアドレスあり？
-                        subject = "みまもりくん"
-                        msg = "人を発見しました。"
-                        #メール送信
-                        send_mail(mailto_placeholder, subject, msg)
-
-            if send_flag_placeholder: # メール送信あり？
-                # 合計人数更新
-                setTotal(1)
-            else:
-                # 合計人数リセット
-                setTotal(0)
+            # 合計人数更新
+            total_num += 1
+            total_num = (total_num % 10000) + 1
+            st.session_state[total_key] = total_num
 
         else: # 人がいない
-            labels.info("安全です")
+            labels.info('安全です' + str(total_num))
 
             # # 合計人数リセット
-            # setTotal(0)
-
-    # 合計人数リセット
-    setTotal(0)
-
-else: # 非配信中
-    # 合計人数リセット
-    setTotal(0)
+            # total_num = 0
+            # st.session_state[total_key] = total_num
