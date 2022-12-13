@@ -125,6 +125,7 @@ mail_pass = st.secrets.mail_settings.mail_pass
 
 # 合計人数
 total_key = "total_number"
+total_num = 0
 total_max = 10000
 
 # キュー
@@ -132,84 +133,16 @@ result_queue: queue.Queue = (
     queue.Queue()
 )  # TODO: A general-purpose shared state object may be more useful.
 
-# ロガー
-# logger = logging.getLogger(__name__)
-
-# プラットフォーム
-plat = sys.platform
-
-# ファイルダウンロード
-download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=23147564) # 学習モデル
-download_file(PROTOTXT_URL, PROTOTXT_LOCAL_PATH, expected_size=29353) # プロトコル
-
-# Session-specific caching
-cache_key = "object_detection_dnn"
-if cache_key in st.session_state:
-    net = st.session_state[cache_key]
-else:
-    net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
-    st.session_state[cache_key] = net
-
-# フォント
-if plat == "win32": # Windows
-    font_name = font_name_win
-if plat == "darwin": # Mac
-    font_name = font_name_mac
-if plat in ("linux", "linux2"): # Linux
-    font_name = font_name_lnx
-
-# ラベルフォント
-labelfont = ImageFont.truetype(font_name, label_font_size)
-
-# ロゴマーク読み込み
-logo_image = cv2.imread(logo_path, cv2.IMREAD_UNCHANGED)
-logo_image = cv2.resize(logo_image, dsize=None, fx=logo_rate, fy=logo_rate)
-logo_height, logo_width = logo_image.shape[:2]
-# PIL形式に変換
-logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
-logo_pil = Image.fromarray(logo_image)
-
-# タイトル表示
-st.subheader("みまもりくん")
-
-# 状態表示
-labels_placeholder = st.empty()
-# 映像表示
-streaming_placeholder = st.empty()
-# スライダー表示
-confidence_threshold = st.slider(
-    "精度", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
-)
-
-# メールアドレス
-mailto_placeholder = st.text_input("宛先メールアドレス", "")
-# メール送信
-send_flag_placeholder = st.checkbox("人が見つかったときにメールを送信する")
-
-# 合計人数取得
-def getTotal():
-    result = 0
-
-    if total_key in st.session_state: # セッションあり？
-        # セッション取得
-        result = st.session_state[total_key]
-
-    return result
-
-# 合計人数設定
-def setTotal(num):
-    if num != 0: # インクリメント？
-        # インクリメント
-        result = ((getTotal() + 1) % total_max) + 1
-
-    else: # リセット
-        result = 0
-
-    # セッション保持
-    st.session_state[total_key] = result
+# グローバル変数
+confidence_threshold = None
+plat = None
+labelfont = None
+logo_width = None
+logo_pil = None
+net = None
 
 # メール送信
-def send_mail(mail_to, subject, msg):
+def sendMail(mail_to, subject, msg):
     msg = MIMEText(msg, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = mail_from
@@ -231,6 +164,25 @@ def send_mail(mail_to, subject, msg):
     
     # 閉じる
     server.quit()
+
+# 合計人数設定
+def setTotal(num):
+    global total_num
+
+    if num != 0: # 0以外？
+        # インクリメント
+        total_num += 1
+
+        # 補正
+        total_num = total_num % total_max
+        if total_num == 0:
+            total_num += 1
+
+    else: # リセット
+        total_num = 0
+
+    # セッション保持
+    st.session_state[total_key] = total_num
 
 # 物体抽出
 def extractionObject(cimage, detections):
@@ -320,64 +272,140 @@ def callback(frame: av.VideoFrame) -> av.VideoFrame:
 
     return av.VideoFrame.from_ndarray(cimage, format="bgr24")
 
-# 映像表示
-with streaming_placeholder.container():
-    # WEBカメラ
-    webrtc_ctx = webrtc_streamer(
-        key="object-detection",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        video_frame_callback=callback,
-        media_stream_constraints={"video": True, "audio": False},
-        async_processing=True,
-        translations={
-            "start": "開始",
-            "stop": "停止",
-            "select_device": "カメラ切替",
-            "media_api_not_available": "Media APIが利用できない環境です",
-            "device_ask_permission": "メディアデバイスへのアクセスを許可してください",
-            "device_not_available": "メディアデバイスを利用できません",
-            "device_access_denied": "メディアデバイスへのアクセスが拒否されました",
-        },
+# メイン処理
+def appmain():
+    global confidence_threshold
+    global plat
+    global labelfont
+    global logo_width
+    global logo_pil
+    global net
+    global total_num
+
+    # ロガー
+    # logger = logging.getLogger(__name__)
+
+    # プラットフォーム
+    plat = sys.platform
+
+    # ファイルダウンロード
+    download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=23147564) # 学習モデル
+    download_file(PROTOTXT_URL, PROTOTXT_LOCAL_PATH, expected_size=29353) # プロトコル
+
+    # Session-specific caching
+    cache_key = "object_detection_dnn"
+    if cache_key in st.session_state:
+        net = st.session_state[cache_key]
+    else:
+        net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
+        st.session_state[cache_key] = net
+
+    # 合計人数取得
+    if total_key in st.session_state: # セッションあり？
+        # セッション取得
+        total_num = st.session_state[total_key]
+    else:
+        setTotal(0) # リセット
+
+    # フォント
+    if plat == "win32": # Windows
+        font_name = font_name_win
+    if plat == "darwin": # Mac
+        font_name = font_name_mac
+    if plat in ("linux", "linux2"): # Linux
+        font_name = font_name_lnx
+
+    # ラベルフォント
+    labelfont = ImageFont.truetype(font_name, label_font_size)
+
+    # ロゴマーク読み込み
+    logo_image = cv2.imread(logo_path, cv2.IMREAD_UNCHANGED)
+    logo_image = cv2.resize(logo_image, dsize=None, fx=logo_rate, fy=logo_rate)
+    logo_height, logo_width = logo_image.shape[:2]
+    # PIL形式に変換
+    logo_image = cv2.cvtColor(logo_image, cv2.COLOR_BGRA2RGBA)
+    logo_pil = Image.fromarray(logo_image)
+
+    # タイトル表示
+    st.subheader("みまもりくん")
+
+    # 状態表示
+    labels_placeholder = st.empty()
+    # 映像表示
+    streaming_placeholder = st.empty()
+    # スライダー表示
+    confidence_threshold = st.slider(
+        "精度", 0.0, 1.0, DEFAULT_CONFIDENCE_THRESHOLD, 0.05
     )
 
-if webrtc_ctx.state.playing: # 映像配信中？
-    panels = labels_placeholder
+    # メールアドレス
+    mailto_placeholder = st.text_input("宛先メールアドレス", "")
+    # メール送信
+    send_flag_placeholder = st.checkbox("人が見つかったときにメールを送信する")
 
-    while webrtc_ctx.state.playing: # 配信中
-        try:
-            # キューの取得
-            nums = result_queue.get(timeout=1.0) # 人数取得
-        except queue.Empty:
-            nums = 0
+    # 映像表示
+    with streaming_placeholder.container():
+        # WEBカメラ
+        webrtc_ctx = webrtc_streamer(
+            key="object-detection",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            video_frame_callback=callback,
+            media_stream_constraints={"video": True, "audio": False},
+            async_processing=True,
+            translations={
+                "start": "開始",
+                "stop": "停止",
+                "select_device": "カメラ切替",
+                "media_api_not_available": "Media APIが利用できない環境です",
+                "device_ask_permission": "メディアデバイスへのアクセスを許可してください",
+                "device_not_available": "メディアデバイスを利用できません",
+                "device_access_denied": "メディアデバイスへのアクセスが拒否されました",
+            },
+        )
 
-        if nums > 0: # 人がいる？
-            panels.error("人を発見！")
+    if webrtc_ctx.state.playing: # 映像配信中？
+        panels = labels_placeholder
 
-            if getTotal() == 0: # 初回？
+        while webrtc_ctx.state.playing: # 配信中
+            try:
+                # キューの取得
+                nums = result_queue.get(timeout=1.0) # 人数取得
+            except queue.Empty:
+                nums = 0
+
+            if nums > 0: # 人がいる？
+                panels.error("人を発見！")
+
+                if total_num == 0: # 初回？
+                    if send_flag_placeholder: # メール送信あり？
+                        if mailto_placeholder != "": # 送信メールアドレスあり？
+                            subject = "みまもりくん"
+                            msg = "人を発見しました。"
+                            #メール送信
+                            sendMail(mailto_placeholder, subject, msg)
+
                 if send_flag_placeholder: # メール送信あり？
-                    if mailto_placeholder != "": # 送信メールアドレスあり？
-                        subject = "みまもりくん"
-                        msg = "人を発見しました。"
-                        #メール送信
-                        send_mail(mailto_placeholder, subject, msg)
+                    # 合計人数更新
+                    setTotal(1)
+                else:
+                    # 合計人数リセット
+                    setTotal(0)
 
-            if send_flag_placeholder: # メール送信あり？
-                # 合計人数更新
-                setTotal(1)
-            else:
-                # 合計人数リセット
-                setTotal(0)
+            else: # 人がいない
+                panels.info("安全です")
 
-        else: # 人がいない
-            panels.info("安全です")
+                # # 合計人数リセット
+                # setTotal(0)
 
-            # # 合計人数リセット
-            # setTotal(0)
+        # 合計人数リセット
+        setTotal(0)
 
-    # 合計人数リセット
-    setTotal(0)
+    else: # 非配信中
+        # 合計人数リセット
+        setTotal(0)
 
-else: # 非配信中
-    # 合計人数リセット
-    setTotal(0)
+#コマンドプロンプト上で表示する
+if __name__ == "__main__":
+    #メイン処理
+    appmain()
