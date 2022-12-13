@@ -123,6 +123,10 @@ mail_port = st.secrets.mail_settings.mail_port
 mail_from = st.secrets.mail_settings.mail_from
 mail_pass = st.secrets.mail_settings.mail_pass
 
+# 合計人数
+total_key = "total_number"
+total_max = 10000
+
 # キュー
 result_queue: queue.Queue = (
     queue.Queue()
@@ -130,6 +134,9 @@ result_queue: queue.Queue = (
 
 # ロガー
 # logger = logging.getLogger(__name__)
+
+# プラットフォーム
+plat = sys.platform
 
 # ファイルダウンロード
 download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=23147564) # 学習モデル
@@ -143,16 +150,12 @@ else:
     net = cv2.dnn.readNetFromCaffe(str(PROTOTXT_LOCAL_PATH), str(MODEL_LOCAL_PATH))
     st.session_state[cache_key] = net
 
-# 合計人数
-total_key = "total_number"
-total_max = 10000
-
 # フォント
-if sys.platform == "win32": # Windows
+if plat == "win32": # Windows
     font_name = font_name_win
-if sys.platform == "darwin": # Mac
+if plat == "darwin": # Mac
     font_name = font_name_mac
-if sys.platform in ("linux", "linux2"): # Linux
+if plat in ("linux", "linux2"): # Linux
     font_name = font_name_lnx
 
 # ラベルフォント
@@ -274,7 +277,7 @@ def drawingResult(src, objects):
     # 物体取得
     for (startX, startY, endX, endY, ename, jname, col, confidence) in objects:
         # ラベル
-        if sys.platform in ("linux", "linux2"): # Linux？（日本語フォントなし）
+        if plat in ("linux", "linux2"): # Linux？（日本語フォントなし）
             label = ename # 英語
         else:
             label = jname # 日本語
@@ -339,17 +342,17 @@ with streaming_placeholder.container():
     )
 
 if webrtc_ctx.state.playing: # 映像配信中？
-    labels = labels_placeholder
+    panels = labels_placeholder
 
     while webrtc_ctx.state.playing: # 配信中
         try:
             # キューの取得
-            result = result_queue.get(timeout=1.0) # 人数取得
+            nums = result_queue.get(timeout=1.0) # 人数取得
         except queue.Empty:
-            result = 0
+            nums = 0
 
-        if result > 0: # 人がいる？
-            labels.error("人を発見！")
+        if nums > 0: # 人がいる？
+            panels.error("人を発見！")
 
             if getTotal() == 0: # 初回？
                 if send_flag_placeholder: # メール送信あり？
@@ -367,7 +370,7 @@ if webrtc_ctx.state.playing: # 映像配信中？
                 setTotal(0)
 
         else: # 人がいない
-            labels.info("安全です")
+            panels.info("安全です")
 
             # # 合計人数リセット
             # setTotal(0)
