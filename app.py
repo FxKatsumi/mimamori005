@@ -162,7 +162,7 @@ def sendMail(mail_to, subject, msg):
             #ログイン
             server.login(mail_from, mail_pass)
 
-            # raise ValueError("エラーです") # @@Debug
+            # raise ValueError("テスト") # @@Debug
 
             # メール送信
             server.send_message(msg)
