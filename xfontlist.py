@@ -29,7 +29,7 @@ def font_installed_dirs() -> list[str]:
 
 def font_path_list() -> list[str]:
     """
-    インストールされているフォントのPATHリストを取得
+    #インストールされているフォントのPATHリストを取得
     """
 
     # フォントがインストールされているディレクトリリスト取得
