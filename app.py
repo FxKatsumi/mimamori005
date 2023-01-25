@@ -10,8 +10,8 @@ from streamlit_webrtc import WebRtcMode, webrtc_streamer
 import sys
 
 #メール
-# from email.mime.text import MIMEText
-# import smtplib
+from email.mime.text import MIMEText
+import smtplib
 
 # ダウンロードモジュール
 from sample_utils.download import download_file
@@ -141,41 +141,41 @@ logo_width = None
 logo_pil = None
 net = None
 
-# # メール送信
-# def sendMail(mail_to, subject, msg):
+# メール送信
+def sendMail(mail_to, subject, msg):
 
-#     try:
-#         msg = MIMEText(msg, "plain", "utf-8")
-#         msg["Subject"] = subject
-#         msg["From"] = mail_from
-#         msg["To"] = mail_to
+    try:
+        msg = MIMEText(msg, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = mail_from
+        msg["To"] = mail_to
 
-#         # メールサーバー
-#         server = smtplib.SMTP(mail_host, mail_port)
+        # メールサーバー
+        server = smtplib.SMTP(mail_host, mail_port)
 
-#         try:
-#             #TLS認証
-#             server.ehlo()
-#             server.starttls()
-#             server.ehlo()
+        try:
+            #TLS認証
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
 
-#             #ログイン
-#             server.login(mail_from, mail_pass)
+            #ログイン
+            server.login(mail_from, mail_pass)
 
-#             # raise ValueError("テスト") # @@Debug
+            # raise ValueError("テスト") # @@Debug
 
-#             # メール送信
-#             server.send_message(msg)
+            # メール送信
+            server.send_message(msg)
 
-#         except Exception as e:
-#             raise e
+        except Exception as e:
+            raise e
 
-#         finally:
-#             # 閉じる
-#             server.quit()
+        finally:
+            # 閉じる
+            server.quit()
 
-#     except Exception as e:
-#         st.error("sendMail：" + str(e))
+    except Exception as e:
+        st.error("sendMail：" + str(e))
 
 # 合計人数設定
 def setTotal(num):
@@ -424,7 +424,7 @@ def appmain():
                                 subject = "みまもりくん"
                                 msg = "人を発見しました。"
                                 #メール送信
-                                # sendMail(mailto_placeholder, subject, msg)
+                                sendMail(mailto_placeholder, subject, msg)
 
                     if send_flag_placeholder: # メール送信あり？
                         # 合計人数更新
